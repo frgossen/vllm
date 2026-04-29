@@ -51,6 +51,15 @@ def monitor_torch_compile(
             else:
                 compilation_config.compilation_time += total_compile_time
             logger.info_once(message, total_compile_time)
+            import statistics
+
+            from .piecewise_backend import compile_all_ranges_measurements
+
+            secs = compile_all_ranges_measurements
+            assert secs, "no compile_all_ranges measurements recorded"
+            secs_sorted = sorted(secs, reverse=True)
+            for i, v in enumerate(secs_sorted):
+                logger.info("compile_all_ranges[%d]: %.1f ms", i, v * 1e3)
     finally:
         if depyf_cm is not None:
             try:
