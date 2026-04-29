@@ -8,6 +8,7 @@ import pickle
 from collections.abc import Callable
 from pickle import Pickler
 from typing import Any
+import time
 
 import torch._functorch.config
 import torch.fx as fx
@@ -21,6 +22,9 @@ from vllm.config.utils import Range
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
+
+# Global list of per-invocation durations (seconds) from compile_all_ranges.
+compile_all_ranges_measurements: list[float] = []
 
 
 def get_fake_args_from_graph(graph: fx.GraphModule) -> list[Any]:
@@ -244,6 +248,8 @@ class PiecewiseBackend:
 
     def compile_all_ranges(self) -> None:
         """Compile all range entries for this piecewise subgraph up front."""
+        t0 = time.perf_counter()
+
         assert self.graph is not None, (
             "Cannot compile without a graph. "
             "When loading from cache/AOT artifacts, "
@@ -275,6 +281,8 @@ class PiecewiseBackend:
             )
 
             range_entry.compiled = True
+
+        compile_all_ranges_measurements.append(time.perf_counter() - t0)
 
     @dynamo_timed("vllm_log_compile_start_torch_trace_only")
     def _log_compile_start(self, compile_range: Range):
